@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Sign In</title>
+    <link rel="stylesheet" href="./css/signin.css" />
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f2f2f2;
+        margin: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+      }
+
+      .login-container {
+        max-width: 500px; /* Increased width */
+        margin: 0 auto; /* Centering the container */
+        padding: 30px; /* Added some padding */
+        background-color: #fff;
+        border-radius: 5px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+
+      .login-header {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+
+      .signin-form-group {
+        margin-bottom: 20px;
+      }
+
+      .signin-form-group label {
+        display: block;
+        font-weight: bold;
+        margin-bottom: 5px;
+        color: #333;
+      }
+
+      .login-input {
+        width: 300px; /* Full width input */
+        padding: 12px; /* Increased padding */
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        box-sizing: border-box; /* Include padding and border in width */
+      }
+
+      .login-btn {
+        display: block;
+        width: 100%; /* Full width button */
+        padding: 12px; /* Increased padding */
+        background-color: #000;
+        color: #fff;
+        text-align: center;
+        text-decoration: none;
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+        box-sizing: border-box; /* Include padding and border in width */
+      }
+
+      .login-btn:hover {
+        background-color: #333;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="login-container">
+      <h2 class="login-header">Sign In</h2>
+      <p><%= errorMessage %></p>
+      <form action="/signin" method="post">
+        <div class="signin-form-group">
+          <label for="email">Email</label>
+          <input
+            type="text"
+            id="email"
+            name="email"
+            class="login-input"
+            placeholder="Enter your email"
+          />
+        </div>
+
+        <div class="signin-form-group">
+          <label for="password">Password</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            class="login-input"
+            placeholder="Enter your password"
+          />
+        </div>
+        <button type="submit" class="login-btn">Sign In</button>
+      </form>
+      <div class="signin-link">
+        <p>
+          Don't have an account?
+          <a href="/signup">Sign Up</a>
+        </p>
+      </div>
+    </div>
+
+    <script>
+      function showSuccessMessage() {
+        const successMessage = document.getElementById("signup-success");
+        successMessage.style.display = "block";
+        setTimeout(function () {
+          successMessage.style.display = "none";
+        }, 5000); // Set the time in milliseconds (5s)
+      }
+
+      // Check if the query parameter 'signupSuccess' is present in the URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const signupSuccess = urlParams.get("signupSuccess");
+
+      // If signupSuccess exists and is true, display the success message
+      if (signupSuccess === "true") {
+        showSuccessMessage();
+      }
+    </script>
+  </body>
+</html>

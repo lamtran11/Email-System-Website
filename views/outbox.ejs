@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Outbox</title>
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      /* Custom CSS for Outbox page */
+      body {
+        font-family: Arial, sans-serif;
+      }
+
+      header {
+        background-color: #f2f2f2;
+        padding: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      nav {
+        background-color: #f2f2f2;
+        padding: 10px;
+      }
+
+      nav ul {
+        list-style-type: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      nav ul li {
+        display: inline;
+        margin-right: 10px;
+      }
+
+      nav ul li a {
+        display: flex;
+        align-items: center;
+        text-decoration: none;
+        color: #333;
+        border-radius: 3px;
+        transition: background-color 0.3s;
+      }
+
+      nav ul li a:hover {
+        background-color: #e2e2e2;
+      }
+
+      nav ul li a .icon {
+        margin-right: 5px;
+      }
+
+      main {
+        margin-top: 20px;
+        display: flex;
+      }
+
+      .sidebar {
+        width: 200px;
+        background-color: #f2f2f2;
+        padding: 10px;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      }
+
+      .sidebar ul {
+        list-style-type: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      .sidebar ul li {
+        margin-bottom: 10px;
+      }
+
+      .sidebar ul li a {
+        display: flex;
+        align-items: center;
+        padding: 8px;
+        text-decoration: none;
+        color: #333;
+        border-radius: 3px;
+        transition: background-color 0.3s;
+      }
+
+      .sidebar ul li a:hover {
+        background-color: #e2e2e2;
+      }
+
+      .content {
+        flex-grow: 1;
+        margin-left: 20px;
+      }
+
+      h2 {
+        margin-bottom: 10px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        padding: 8px;
+        border-bottom: 1px solid #ddd;
+      }
+
+      .pagination {
+        margin-top: 10px;
+        display: flex;
+        justify-content: center;
+      }
+
+      .pagination a {
+        color: #000;
+        padding: 8px 16px;
+        text-decoration: none;
+        transition: background-color 0.3s;
+      }
+
+      .pagination a.active {
+        background-color: #4caf50;
+        color: white;
+      }
+
+      #deleteButton {
+        margin-top: 10px;
+        padding: 8px 16px;
+        background-color: #f44336;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+
+      /* ---------------------------------------------- */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+      }
+
+      th,
+      td {
+        padding: 12px;
+        text-align: left;
+      }
+
+      th {
+        background-color: #f2f2f2;
+      }
+
+      tr:nth-child(even) {
+        background-color: #f9f9f9;
+      }
+
+      tr:hover {
+        background-color: #e2e2e2;
+      }
+    </style>
+
+    <!-- Include any necessary scripts -->
+  </head>
+  <body>
+    <main>
+      <div class="sidebar">
+        <ul>
+          <li>
+            <a href="/compose"><span class="icon"></span>Compose</a>
+          </li>
+          <li>
+            <a href="/inbox"><span class="icon"></span>Inbox</a>
+          </li>
+          <li>
+            <a href="/outbox"><span class="icon"></span>Outbox</a>
+          </li>
+        </ul>
+      </div>
+      <div class="content">
+        <header>
+          <h1>Welcome, <%= userFullName %></h1>
+          <a href="/signout">Sign out</a>
+        </header>
+
+        <h2>Outbox</h2>
+        <table>
+          <thead>
+            <tr>
+              <th></th>
+              <th>Recipient</th>
+              <th>Subject</th>
+              <th>Time Sent</th>
+            </tr>
+          </thead>
+          <tbody id="emailList">
+            <!-- Loop through emails to display -->
+            <% emails.forEach(email => { %>
+            <tr>
+              <td>
+                <input
+                  type="checkbox"
+                  name="selectedEmails"
+                  value="<%= email.id %>"
+                />
+              </td>
+              <td><%= email.recipient %></td>
+              <td><a href="/email/<%= email.id %>"><%= email.subject %></a></td>
+              <td><%= email.timeSent %></td>
+            </tr>
+            <% }); %>
+          </tbody>
+        </table>
+        <div class="pagination">
+          <!-- Pagination links will be dynamically generated here -->
+          <% /* Add pagination links here */ %>
+        </div>
+        <button id="deleteButton">Delete</button>
+      </div>
+    </main>
+    <script src="inbox.js"></script>
+  </body>
+</html>
