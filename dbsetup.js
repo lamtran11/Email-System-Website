@@ -3,9 +3,8 @@ const mysql = require("mysql2");
 // Create a connection to the database
 const connection = mysql.createConnection({
   host: "localhost",
-  user: "your_username",
-  password: "your_password",
-  database: "your_database_name",
+  user: "wpr",
+  password: "fit2023",
 });
 
 // Connect to the database
@@ -13,70 +12,73 @@ connection.connect((err) => {
   if (err) throw err;
   console.log("Connected to the database");
 
-  // Create the users table
-  const createUsersTableQuery = `
-    CREATE TABLE IF NOT EXISTS users (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      email VARCHAR(255) NOT NULL,
-      name VARCHAR(255) NOT NULL
-    )
-  `;
-  connection.query(createUsersTableQuery, (err) => {
+  // Create the database
+  connection.query("CREATE DATABASE IF NOT EXISTS wpr2023", (err, result) => {
     if (err) throw err;
-    console.log("Users table created");
+    console.log("Database created");
 
-    // Insert users data
-    const insertUsersQuery = `
-      INSERT INTO users (email, name)
-      VALUES
-        ('a@a.com', 'User A'),
-        ('b@b.com', 'User B'),
-        ('c@c.com', 'User C')
-    `;
-    connection.query(insertUsersQuery, (err) => {
+    // Use the database
+    connection.query("USE wpr2023", (err, result) => {
       if (err) throw err;
-      console.log("Users data inserted");
+      console.log("Using database");
 
-      // Create the emails table
-      const createEmailsTableQuery = `
-        CREATE TABLE IF NOT EXISTS emails (
-          id INT AUTO_INCREMENT PRIMARY KEY,
-          sender_id INT NOT NULL,
-          receiver_id INT NOT NULL,
-          subject VARCHAR(255) NOT NULL,
-          message TEXT NOT NULL,
-          FOREIGN KEY (sender_id) REFERENCES users(id),
-          FOREIGN KEY (receiver_id) REFERENCES users(id)
-        )
-      `;
-      connection.query(createEmailsTableQuery, (err) => {
+      // Continue with the rest of the code...
+      // BEGIN: be15d9bcejpp
+      // Create the users table
+      const createUsersTable = `CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        fullname VARCHAR(255) NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        password VARCHAR(255) NOT NULL
+      )`;
+      connection.query(createUsersTable, (err, result) => {
         if (err) throw err;
-        console.log("Emails table created");
+        console.log("Users table created");
 
-        // Insert emails data
-        const insertEmailsQuery = `
-          INSERT INTO emails (sender_id, receiver_id, subject, message)
-          VALUES
-            (1, 2, 'Subject 1', 'Message 1'),
-            (2, 1, 'Subject 2', 'Message 2'),
-            (1, 3, 'Subject 3', 'Message 3'),
-            (3, 1, 'Subject 4', 'Message 4'),
-            (2, 3, 'Subject 5', 'Message 5'),
-            (3, 2, 'Subject 6', 'Message 6'),
-            (1, 2, 'Subject 7', 'Message 7'),
-            (2, 1, 'Subject 8', 'Message 8')
-        `;
-        connection.query(insertEmailsQuery, (err) => {
+        // Insert 3 users
+        const insertUsers = `INSERT INTO users (fullname, email, password) VALUES
+          ('User 1', 'a@a.com', '123456'),
+          ('User 2', 'b@b.com', 'abcdef'),
+          ('User 3', 'c@c.com', 'uvwxyz')`;
+        connection.query(insertUsers, (err, result) => {
           if (err) throw err;
-          console.log("Emails data inserted");
+          console.log("3 users inserted");
 
-          // Close the database connection
-          connection.end((err) => {
+          // Create the mails table
+          const createMailsTable = `CREATE TABLE IF NOT EXISTS mails (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            subject VARCHAR(255) NOT NULL,
+            body TEXT NOT NULL,
+            send_at DATETIME NOT NULL,
+            sender_id INT NOT NULL,
+            receiver_id INT NOT NULL,
+            senderDeleted BOOLEAN DEFAULT false,
+            receiverDeleted BOOLEAN DEFAULT false,
+            FOREIGN KEY (sender_id) REFERENCES users(id),
+            FOREIGN KEY (receiver_id) REFERENCES users(id)
+          )`;
+          connection.query(createMailsTable, (err, result) => {
             if (err) throw err;
-            console.log("Database connection closed");
+            console.log("Mails table created");
+
+            // Insert at least 8 mails
+            const insertMails = `INSERT INTO mails (subject, body, send_at, sender_id, receiver_id) VALUES
+              ('Mail 1', 'Body 1', NOW(), 1, 2),
+              ('Mail 2', 'Body 2', NOW(), 2, 1),
+              ('Mail 3', 'Body 3', NOW(), 1, 3),
+              ('Mail 4', 'Body 4', NOW(), 3, 1),
+              ('Mail 5', 'Body 5', NOW(), 2, 3),
+              ('Mail 6', 'Body 6', NOW(), 3, 2),
+              ('Mail 7', 'Body 7', NOW(), 1, 2),
+              ('Mail 8', 'Body 8', NOW(), 2, 1)`;
+            connection.query(insertMails, (err, result) => {
+              if (err) throw err;
+              console.log("Mails inserted");
+            });
           });
         });
       });
+      // END: be15d9bcejpp
     });
   });
 });

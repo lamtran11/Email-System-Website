@@ -17,48 +17,11 @@ const connection = mysql.createConnection({
   database: "wpr2023",
 });
 
-connection.connect((err) => {
-  if (err) {
-    console.error("Error connecting to MySQL:", err);
-    return;
-  }
-  console.log("Connected to MySQL!");
-
-  const createUserTable = `CREATE TABLE IF NOT EXISTS users (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      full_name VARCHAR(255) NOT NULL,
-      email VARCHAR(255) UNIQUE NOT NULL,
-      password VARCHAR(255) NOT NULL
-  )`;
-
-  const createEmailTable = `CREATE TABLE IF NOT EXISTS emails (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      sender_id INT NOT NULL,
-      receiver_id INT NOT NULL,
-      subject VARCHAR(255),
-      body TEXT,
-      attachment VARCHAR(255),
-      sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (sender_id) REFERENCES users(id),
-      FOREIGN KEY (receiver_id) REFERENCES users(id)
-  )`;
-
-  connection.query(createUserTable, (err) => {
-    if (err) throw err;
-    console.log("Users table created");
-
-    connection.query(createEmailTable, (err) => {
-      if (err) throw err;
-      console.log("Emails table created");
-    });
-  });
-});
-
 app.use(express.static(path.join(__dirname, "public")));
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 app.use(express.urlencoded({ extended: true }));
-
+app.use(express.json());
 //SIGN UP PAGE -////////////////////////////////////////////////////////////////////////
 
 // Function to check if email is valid format
@@ -83,7 +46,7 @@ app.post("/signup", (req, res) => {
     res.render("signup", { data: { errorMessage: "Passwords don't match" } });
     return;
   }
-  const insertUserQuery = `INSERT INTO users (full_name, email, password) VALUES (?, ?, ?)`;
+  const insertUserQuery = `INSERT INTO users (fullname, email, password) VALUES (?, ?, ?)`;
   connection.query(insertUserQuery, [name, email, password], (err, result) => {
     if (err) {
       res.render("signup", {
@@ -145,7 +108,7 @@ app.post("/signin", (req, res) => {
       res.cookie("invalidSignIn", true); // Set the invalidSignIn cookie
       res.redirect("/signin");
     } else {
-      res.cookie("user_fullname", result[0].full_name);
+      res.cookie("user_fullname", result[0].fullname);
       res.cookie("user_id", result[0].id);
       res.cookie("user_email", result[0].email);
       // Redirect to /inbox with a query parameter indicating successful sign-in
@@ -178,11 +141,56 @@ app.get("/inbox", (req, res) => {
     res.render("access-denied");
     return;
   }
-  // Render inbox page with emails data and success flag
-  res.render("inbox", {
-    emails: emails,
-    userFullName: req.cookies.user_fullname,
-    success,
+
+  // Query the database to get all mails with the specified conditions
+  const selectMailsQuery = `
+    SELECT mails.id, mails.subject, users.fullname AS sender_name, mails.send_at
+    FROM mails
+    JOIN users ON mails.sender_id = users.id
+    WHERE mails.receiver_id = ? AND mails.receiverDeleted = false
+    ORDER BY send_at DESC
+  `;
+
+  connection.query(selectMailsQuery, [req.cookies.user_id], (err, result) => {
+    if (err) {
+      // Handle the error
+      console.error(err);
+      // res.render("error");
+      return;
+    }
+
+    // Render inbox page with emails data and success flag
+    res.render("inbox", {
+      emails: result,
+      userFullName: req.cookies.user_fullname,
+      success,
+    });
+  });
+});
+
+app.get("/email/:id", (req, res) => {
+  const id = req.params.id;
+  const selectMailQuery = `
+    SELECT mails.id, mails.subject, mails.body, users.email AS sender_email, u2.email AS receiver_email, mails.send_at
+    FROM mails
+    JOIN users ON mails.sender_id = users.id
+    JOIN users u2 ON mails.receiver_id = u2.id
+    WHERE mails.id = ?
+  `;
+
+  connection.query(selectMailQuery, [id], (err, result) => {
+    if (err) {
+      // Handle the error
+      console.error(err);
+      // res.render("error");
+      return;
+    }
+
+    // Render inbox page with emails data and success flag
+    res.render("emailDetail", {
+      email: result[0],
+      userFullName: req.cookies.user_fullname,
+    });
   });
 });
 
@@ -191,29 +199,6 @@ app.get("/inbox", (req, res) => {
 //
 //
 // INBOX PAGE -----------------------------------------------------------------------------
-// Mocked data for emails (replace this with actual data retrieval logic)
-const emails = [
-  // Sample email objects
-  {
-    id: 1,
-    sender: "Sender Name 1",
-    subject: "Subject 1",
-    timeReceived: "2023-11-14 10:00:00",
-  },
-  {
-    id: 2,
-    sender: "Sender Name 2",
-    subject: "Subject 2",
-    timeReceived: "2023-11-14 09:30:00",
-  },
-  {
-    id: 3,
-    sender: "Sender Name 3",
-    subject: "Subject 3",
-    timeReceived: "2023-11-14 08:45:00",
-  },
-  // ...
-];
 
 // / Middleware function to check if the user is signed in
 const checkSignIn = (req, res, next) => {
@@ -238,38 +223,37 @@ const checkSignIn = (req, res, next) => {
 
 app.use(checkSignIn);
 
-// Apply the checkSignIn middleware to the inbox route
-app.get("/inbox", checkSignIn, (req, res) => {
-  // Check if the user is signed in
-  console.log("Hello");
-  if (!req.cookies.user_id) {
-    res.render("access-denied");
-    return;
-  }
-  // Render the inbox page or perform other actions for signed-in users
-  res.render("inbox", { emails: emails, userFullName: "LAM" }); // Adjust this based on your templating engine and file structure
-});
-
 // POST route to handle deleting emails
-app.post("/inbox/delete", (req, res) => {
-  const selectedEmails = req.body.selectedEmails; // Array of selected email IDs to delete
+app.post("/delete", (req, res) => {
+  console.log(req.body);
+  const deletedIds = req.body.deletedIds; // Array of selected email IDs to delete
+  const deletedBy = req.body.deletedBy;
+
+  const arrayidString = deletedIds.join(", ");
+
+  const updateMailsQuery = `UPDATE mails SET ${deletedBy}Deleted = true WHERE id IN (${deletedIds})`;
+
+  console.log(updateMailsQuery);
+
+  connection.query(updateMailsQuery, (err, result) => {
+    if (err) {
+      // Handle the error
+      console.error(err);
+      // res.render("error");
+      return;
+    }
+    // Handle the success
+    console.log("Emails deleted successfully");
+    // res.render("success");
+    // res.redirect("/inbox");
+  });
+
   // Implement deletion logic here based on the selectedEmails array
   // Modify the emails array or perform deletion logic in the database
   // Example: emails = emails.filter(email => !selectedEmails.includes(email.id));
 
   // Respond with success message or updated email list
   res.json({ success: true, message: "Emails deleted successfully" });
-});
-
-app.get("/inbox", (req, res) => {
-  // Check if the user is signed in
-  if (!req.cookies.user_id) {
-    res.redirect("/signin");
-    return;
-  }
-
-  // Render the inbox page or perform other actions for signed-in users
-  res.render("inbox", { emails: emails, userFullName: "LAM" }); // Adjust this based on your templating engine and file structure
 });
 
 app.get("/signout", (req, res) => {
@@ -289,59 +273,58 @@ const bodyParser = require("body-parser");
 // Set up middleware
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Route for handling the form submission
-app.get("/inbox", (req, res) => {
-  // Check if the user is signed in
-  if (!req.cookies.user_id) {
-    res.redirect("/signin");
-    return;
-  }
-  // Render the inbox page or perform other actions for signed-in users
-  res.render("inbox", { emails: emails, userFullName: "LAM" }); // Adjust this based on your templating engine and file structure
-});
-
 // Route for displaying the compose form
 app.get("/compose", (req, res) => {
   const recipients = ["Recipient 1", "Recipient 2", "Recipient 3"];
 
-  res.render("compose", { userFullName: req.cookies.user_fullname });
+  const getALlUserQuery = `SELECT * FROM users WHERE id != ?`;
 
-  res.redirect("/compose");
+  connection.query(getALlUserQuery, [req.cookies.user_id], (err, result) => {
+    if (err) {
+      // Handle the error
+      console.error(err);
+      // res.render("error");
+      return;
+    }
+    res.render("compose", {
+      recipients: result,
+      userFullName: req.cookies.user_fullname,
+    });
+  });
+
+  // res.render("compose", { userFullName: req.cookies.user_fullname });
+
+  // res.redirect("/compose");
 });
 
 // Route for handling the form submission
 app.post("/compose", (req, res) => {
+  console.log(req.body);
   // Retrieve the form data
-  const recipient = req.body.recipient;
+  const senderId = req.cookies.user_id;
+  const receiverId = req.body.recipient;
   const subject = req.body.subject || "(no subject)";
   const body = req.body.body;
-  const file = req.files ? req.files.file : null;
+  const sendAt = new Date(); // Current timestamp
 
-  // Validate the form data
-  if (!recipient) {
-    // Display an error message if recipient is not selected
-    return res.render("compose", {
-      recipients,
-      errorMessage: "Please select a recipient",
-    });
-  }
-
-  // Send the email and handle success/failure
-  sendEmail(recipient, subject, body, file)
-    .then(() => {
-      // Display a success message if the email is sent successfully
-      res.render("compose", {
-        recipients,
-        successMessage: "Email sent successfully",
-      });
-    })
-    .catch((error) => {
-      // Handle the error and display an appropriate message
-      res.render("compose", {
-        recipients,
-        errorMessage: "Failed to send email. Please try again later.",
-      });
-    });
+  // Insert the new record into the mails table
+  const insertMailQuery = `INSERT INTO mails (sender_id, receiver_id, subject, body, send_at) VALUES (?, ?, ?, ?, ?)`;
+  connection.query(
+    insertMailQuery,
+    [senderId, receiverId, subject, body, sendAt],
+    (err, result) => {
+      if (err) {
+        // Handle the error
+        console.error(err);
+        // res.render("error");
+        return;
+      }
+      // Handle the success
+      console.log("New mail record inserted successfully");
+      // res.render("success");
+      res.redirect("/outbox");
+    }
+  );
 });
 
 // Function to send the email
@@ -366,48 +349,41 @@ function sendEmail(recipient, subject, body, file) {
 //
 // OUTBOX PAGE //////////////////////////////////////////////////////////////////////////////
 // GET route for displaying the outbox page
+// Inbox page
 app.get("/outbox", (req, res) => {
-  // Retrieve the outbox emails (replace this with your actual data retrieval logic)
+  // Check if the query parameter 'success' is present and true
+  const success = req.query.success === "true";
 
-  const outboxEmails = [
-    {
-      id: 1,
-      recipient: "Recipient Name 1",
-      subject: "Subject 1",
-      timeSent: "2023-11-14 10:00:00",
-    },
-    {
-      id: 2,
-      recipient: "Recipient Name 2",
-      subject: "Subject 2",
-      timeSent: "2023-11-14 09:30:00",
-    },
-    {
-      id: 3,
-      recipient: "Recipient Name 3",
-      subject: "Subject 3",
-      timeSent: "2023-11-14 08:45:00",
-    },
-    // ...
-  ];
+  // Check if user is signed in
+  if (!req.cookies.user_id) {
+    res.render("access-denied");
+    return;
+  }
 
-  // Render the outbox.ejs template with the outbox emails data
-  res.render("outbox", {
-    emails: outboxEmails,
-    userFullName: req.cookies.user_fullname,
+  // Query the database to get all mails with the specified conditions
+  const selectMailsQuery = `
+    SELECT mails.id, mails.subject, users.fullname AS receiver_name, mails.send_at
+    FROM mails
+    JOIN users ON mails.receiver_id = users.id
+    WHERE mails.sender_id = ? AND mails.senderDeleted = false
+    ORDER BY send_at DESC
+  `;
+
+  connection.query(selectMailsQuery, [req.cookies.user_id], (err, result) => {
+    if (err) {
+      // Handle the error
+      console.error(err);
+      // res.render("error");
+      return;
+    }
+
+    // Render inbox page with emails data and success flag
+    res.render("outbox", {
+      emails: result,
+      userFullName: req.cookies.user_fullname,
+      success,
+    });
   });
-});
-
-// POST route to handle deleting emails from the outbox
-app.post("/outbox/delete", (req, res) => {
-  // Retrieve the selected email IDs to be deleted from the request body
-  const selectedEmails = req.body.selectedEmails;
-
-  // Implement the logic to delete the selected emails from the outbox
-  // ...
-
-  // Redirect back to the outbox page after deleting the emails
-  res.redirect("/outbox");
 });
 
 // OUTBOX PAGE //////////////////////////////////////////////////////////////////////////////

@@ -142,7 +142,9 @@
         <form action="/compose" method="post" onsubmit="return validateForm()">
           <label for="recipient">Recipient:</label>
           <select id="recipient" name="recipient" required>
-            <option value="">Select recipient</option>
+            <% for (let recipient of recipients) { %>
+            <option value="<%= recipient.id %>"><%= recipient.email %></option>
+            <% } %>
             <!-- Add options dynamically here -->
           </select>
           <span id="recipientError" class="error-message"></span>
@@ -155,11 +157,11 @@
             placeholder="(no subject)"
           />
 
-          <label for="message">Message:</label>
-          <textarea id="message" name="message" rows="8"></textarea>
+          <label for="body">Body:</label>
+          <textarea id="body" name="body" rows="8"></textarea>
 
-          <label for="attachment">Attachment:</label>
-          <input type="file" id="attachment" name="attachment" />
+          <!-- <label for="attachment">Attachment:</label> -->
+          <!-- <input type="file" id="attachment" name="attachment" /> -->
 
           <button type="submit">Send</button>
         </form>
